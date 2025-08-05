@@ -143,7 +143,8 @@ function GoalTracker() {
       const newGoals = prevGoals.map((goal) => {
         if (goal.id === goalId) {
           const updatedLevels = goal.levels.map((level) => {
-            if (level.id === levelId) {
+            if (level.id === levelId && level.unlocked) {
+              // Only allow toggle if unlocked
               const newCompleted = !level.completed
               if (newCompleted && !level.completed) {
                 goal.totalXP += 50 // XP for manual level completion
@@ -364,12 +365,12 @@ function GoalTracker() {
                         onClick={() => toggleLevelCompletion(selectedGoal.id, currentLevelData.id)}
                         size="lg"
                         disabled={!currentLevelData.unlocked}
-                        className={`h-14 px-8 text-lg font-semibold ${
+                        className={`h-14 px-8 text-lg font-semibold transition-all duration-200 ${
                           !currentLevelData.unlocked
-                            ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                            ? "bg-slate-300 text-slate-500 cursor-not-allowed hover:bg-slate-300"
                             : currentLevelData.completed
-                              ? "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
-                              : "bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600"
+                              ? "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white"
+                              : "bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white"
                         }`}
                       >
                         {!currentLevelData.unlocked ? (
