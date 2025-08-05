@@ -92,6 +92,8 @@ function GoalTracker() {
   }
 
   const toggleTask = (goalId: string, levelId: number, taskId: string) => {
+    console.log("Toggling task:", { goalId, levelId, taskId }) // Debug log
+
     setGoals((prevGoals) => {
       const newGoals = prevGoals.map((goal) => {
         if (goal.id === goalId) {
@@ -100,6 +102,8 @@ function GoalTracker() {
               const updatedTasks = level.tasks.map((task) => {
                 if (task.id === taskId) {
                   const newCompleted = !task.completed
+                  console.log(`Task ${taskId} changing from ${task.completed} to ${newCompleted}`) // Debug log
+
                   if (newCompleted && !task.completed) {
                     goal.totalXP += 10
                   } else if (!newCompleted && task.completed) {
@@ -408,12 +412,25 @@ function GoalTracker() {
                             key={task.id}
                             className="flex items-start gap-4 p-6 rounded-xl border-2 border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/50 transition-all duration-200"
                           >
-                            <Checkbox
-                              checked={task.completed}
-                              onCheckedChange={() => toggleTask(selectedGoal.id, currentLevelData.id, task.id)}
-                              className="mt-1 h-5 w-5"
-                            />
-                            <div className="flex-1">
+                            <div className="flex-shrink-0 mt-1">
+                              <Checkbox
+                                id={`task-${task.id}`}
+                                checked={task.completed}
+                                onCheckedChange={(checked) => {
+                                  console.log("Checkbox clicked:", { taskId: task.id, checked }) // Debug log
+                                  toggleTask(selectedGoal.id, currentLevelData.id, task.id)
+                                }}
+                                className="h-5 w-5 data-[state=checked]:bg-indigo-500 data-[state=checked]:border-indigo-500"
+                              />
+                            </div>
+                            <div
+                              className="flex-1 cursor-pointer"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                console.log("Task div clicked:", task.id) // Debug log
+                                toggleTask(selectedGoal.id, currentLevelData.id, task.id)
+                              }}
+                            >
                               <h4
                                 className={`font-semibold text-lg ${task.completed ? "line-through text-slate-400" : "text-slate-700"}`}
                               >
@@ -421,7 +438,11 @@ function GoalTracker() {
                               </h4>
                               <p className="text-slate-500 mt-2">{task.description}</p>
                             </div>
-                            {task.completed && <CheckCircle2 className="h-6 w-6 text-green-500 mt-1" />}
+                            {task.completed && (
+                              <div className="flex-shrink-0 mt-1">
+                                <CheckCircle2 className="h-6 w-6 text-green-500" />
+                              </div>
+                            )}
                           </div>
                         ))}
                     </div>
