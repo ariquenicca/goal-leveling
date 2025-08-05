@@ -142,26 +142,6 @@ export async function GET() {
       }
     }
 
-    // Test NextAuth API endpoint
-    try {
-      const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
-      const testUrl = `${baseUrl}/api/auth/providers`
-
-      results.push({
-        name: "NextAuth API Test",
-        status: "success",
-        message: "NextAuth API route is accessible",
-        details: `Test endpoint: ${testUrl}`,
-      })
-    } catch (error) {
-      results.push({
-        name: "NextAuth API Test",
-        status: "error",
-        message: "NextAuth API route test failed",
-        details: error instanceof Error ? error.message : "Unknown error",
-      })
-    }
-
     return NextResponse.json({ results }, { status: 200 })
   } catch (error) {
     console.error("Validation error:", error)

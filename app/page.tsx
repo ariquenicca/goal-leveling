@@ -5,10 +5,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Trophy, Star, Target, Gift, CheckCircle2, Plus, ArrowLeft, LogOut, Settings } from "lucide-react"
+import { Trophy, Star, Target, Gift, CheckCircle2, Plus, ArrowLeft, Settings, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { SimpleAuth } from "@/components/simple-auth"
 import { GoalManagementPage } from "@/components/goal-management-page"
+import { AuthProvider } from "@/components/auth-provider"
+import { LoginForm } from "@/components/login-form"
+import { useSession, signOut } from "next-auth/react"
 
 interface Task {
   id: string
@@ -39,36 +41,21 @@ interface Goal {
   createdAt: Date
 }
 
-interface UserSession {
-  name: string
-  email: string
-  isAuthenticated: boolean
-}
-
 type AppView = "dashboard" | "goal-management" | "goal-tracking"
 
 function GoalTracker() {
-  const [session, setSession] = useState<UserSession | null>(null)
+  const { data: session, status } = useSession()
   const [goals, setGoals] = useState<Goal[]>([])
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null)
   const [currentView, setCurrentView] = useState<AppView>("dashboard")
-  const [isLoading, setIsLoading] = useState(true)
+  const [useSimpleAuth, setUseSimpleAuth] = useState(false)
 
   // Load user data when session changes
   useEffect(() => {
-    const savedSession = localStorage.getItem("goalquest_session")
-    if (savedSession) {
-      try {
-        const parsedSession = JSON.parse(savedSession)
-        setSession(parsedSession)
-        loadUserData(parsedSession.email)
-      } catch (error) {
-        console.error("Error loading session:", error)
-        localStorage.removeItem("goalquest_session")
-      }
+    if (session?.user?.email) {
+      loadUserData(session.user.email)
     }
-    setIsLoading(false)
-  }, [])
+  }, [session])
 
   const loadUserData = (userEmail: string) => {
     try {
@@ -91,29 +78,18 @@ function GoalTracker() {
     }
   }
 
-  const handleLogin = (userData: { name: string; email: string }) => {
-    const newSession: UserSession = {
-      ...userData,
-      isAuthenticated: true,
-    }
-    setSession(newSession)
-    localStorage.setItem("goalquest_session", JSON.stringify(newSession))
-    loadUserData(userData.email)
-  }
-
-  const handleLogout = () => {
-    setSession(null)
-    setSelectedGoal(null)
-    setCurrentView("dashboard")
-    localStorage.removeItem("goalquest_session")
-    setGoals([])
-  }
-
   const handleGoalsUpdate = (newGoals: Goal[]) => {
     setGoals(newGoals)
-    if (session?.email) {
-      saveUserData(session.email, { goals: newGoals })
+    if (session?.user?.email) {
+      saveUserData(session.user.email, { goals: newGoals })
     }
+  }
+
+  const handleLogout = async () => {
+    setSelectedGoal(null)
+    setCurrentView("dashboard")
+    setGoals([])
+    await signOut({ callbackUrl: "/" })
   }
 
   const toggleTask = (goalId: string, levelId: number, taskId: string) => {
@@ -164,8 +140,8 @@ function GoalTracker() {
       })
 
       // Save to localStorage
-      if (session?.email) {
-        saveUserData(session.email, { goals: newGoals })
+      if (session?.user?.email) {
+        saveUserData(session.user.email, { goals: newGoals })
       }
 
       return newGoals
@@ -177,12 +153,12 @@ function GoalTracker() {
   const getCompletedTotalTasks = (goal: Goal) =>
     goal.levels.reduce((total, level) => total + getCompletedTasksCount(level), 0)
 
-  if (isLoading) {
+  if (status === "loading") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardContent className="flex flex-col items-center justify-center p-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mb-4"></div>
+            <Loader2 className="h-8 w-8 animate-spin text-purple-500 mb-4" />
             <p className="text-muted-foreground">Loading Goal Quest...</p>
           </CardContent>
         </Card>
@@ -190,8 +166,8 @@ function GoalTracker() {
     )
   }
 
-  if (!session?.isAuthenticated) {
-    return <SimpleAuth onLogin={handleLogin} />
+  if (status === "unauthenticated") {
+    return <LoginForm onUseSimpleAuth={() => setUseSimpleAuth(true)} />
   }
 
   // Goal Management Page
@@ -201,7 +177,11 @@ function GoalTracker() {
         goals={goals}
         onGoalsUpdate={handleGoalsUpdate}
         onBack={() => setCurrentView("dashboard")}
-        userSession={session}
+        userSession={{
+          name: session?.user?.name || "User",
+          email: session?.user?.email || "",
+          isAuthenticated: true,
+        }}
       />
     )
   }
@@ -394,11 +374,10 @@ function GoalTracker() {
                 Goal Quest
               </h1>
               <p className="text-muted-foreground text-lg">Level up your life, one goal at a time</p>
-              <p className="text-sm text-muted-foreground">Welcome, {session.name}!</p>
+              <p className="text-sm text-muted-foreground">Welcome, {session?.user?.name || session?.user?.email}!</p>
             </div>
             <div className="flex-1 flex justify-end">
               <Button variant="outline" onClick={handleLogout}>
-                <LogOut className="h-4 w-4 mr-2" />
                 Sign Out
               </Button>
             </div>
@@ -511,5 +490,9 @@ function GoalTracker() {
 }
 
 export default function App() {
-  return <GoalTracker />
+  return (
+    <AuthProvider>
+      <GoalTracker />
+    </AuthProvider>
+  )
 }
