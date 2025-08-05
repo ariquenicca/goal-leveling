@@ -170,6 +170,16 @@ export function GoalManagementPage({ goals, onGoalsUpdate, onBack, userSession }
   const handleLevelDragOver = (e: React.DragEvent) => {
     e.preventDefault()
     e.dataTransfer.dropEffect = "move"
+    // Add visual feedback
+    const target = e.currentTarget as HTMLElement
+    target.style.borderColor = "#6366f1"
+    target.style.borderWidth = "2px"
+  }
+
+  const handleLevelDragLeave = (e: React.DragEvent) => {
+    const target = e.currentTarget as HTMLElement
+    target.style.borderColor = ""
+    target.style.borderWidth = ""
   }
 
   const handleLevelDrop = (e: React.DragEvent, targetLevelId: number) => {
@@ -806,12 +816,15 @@ export function GoalManagementPage({ goals, onGoalsUpdate, onBack, userSession }
                     {selectedGoal.levels.map((level) => (
                       <Card
                         key={level.id}
-                        className={`border-0 shadow-xl bg-white/80 backdrop-blur-sm overflow-hidden transition-all ${
-                          draggedLevel === level.id ? "opacity-50 scale-95" : ""
-                        }`}
+                        className="border-0 shadow-xl bg-white/80 backdrop-blur-sm overflow-hidden transition-all duration-200 hover:shadow-2xl"
+                        style={{
+                          opacity: draggedLevel === level.id ? 0.5 : 1,
+                          transform: draggedLevel === level.id ? "scale(0.98)" : "scale(1)",
+                        }}
                         draggable
                         onDragStart={(e) => handleLevelDragStart(e, level.id)}
                         onDragOver={handleLevelDragOver}
+                        onDragLeave={handleLevelDragLeave}
                         onDrop={(e) => handleLevelDrop(e, level.id)}
                       >
                         <CardHeader className="pb-4">
@@ -976,9 +989,11 @@ export function GoalManagementPage({ goals, onGoalsUpdate, onBack, userSession }
                                     level.tasks.map((task) => (
                                       <div
                                         key={task.id}
-                                        className={`flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:border-indigo-200 transition-colors ${
-                                          draggedTask?.taskId === task.id ? "opacity-50 scale-95" : ""
-                                        }`}
+                                        className="flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:border-indigo-200 transition-colors duration-200"
+                                        style={{
+                                          opacity: draggedTask?.taskId === task.id ? 0.5 : 1,
+                                          transform: draggedTask?.taskId === task.id ? "scale(0.98)" : "scale(1)",
+                                        }}
                                         draggable
                                         onDragStart={(e) => handleTaskDragStart(e, level.id, task.id)}
                                         onDragOver={handleTaskDragOver}
