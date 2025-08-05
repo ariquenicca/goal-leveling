@@ -411,8 +411,10 @@ function GoalTracker() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-center p-6 bg-gradient-to-br from-orange-50 to-yellow-50 rounded-xl border-2 border-orange-200">
-                    <div className="text-4xl mb-4">{currentLevelData?.reward.split(" ")[0]}</div>
-                    <p className="font-semibold text-slate-700">{currentLevelData?.reward.substring(2)}</p>
+                    <div className="text-4xl mb-4">🎁</div>
+                    <div className="font-semibold text-slate-700 break-words whitespace-pre-wrap">
+                      {currentLevelData?.reward || "Complete this level to see your reward!"}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
