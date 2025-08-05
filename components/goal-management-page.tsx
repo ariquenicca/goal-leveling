@@ -769,12 +769,12 @@ export function GoalManagementPage({ goals, onGoalsUpdate, onBack, userSession }
                         <Label htmlFor="level-reward" className="text-base font-semibold">
                           Completion Reward
                         </Label>
-                        <Input
+                        <Textarea
                           id="level-reward"
                           value={newLevel.reward}
                           onChange={(e) => setNewLevel({ ...newLevel, reward: e.target.value })}
-                          placeholder="e.g., 🎯 Unlock Next Level + Bonus Resources"
-                          className="mt-2 h-12"
+                          placeholder="e.g., 🎯 Unlock Next Level + Bonus Resources + Achievement Badge"
+                          className="mt-2 min-h-[80px]"
                         />
                       </div>
                     </div>
@@ -838,7 +838,7 @@ export function GoalManagementPage({ goals, onGoalsUpdate, onBack, userSession }
                               <div>
                                 {editingLevelId === level.id ? (
                                   <div className="space-y-3">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-1 md:grid-cols-1 gap-3">
                                       <Input
                                         value={editingLevelData.title || ""}
                                         onChange={(e) =>
@@ -847,13 +847,13 @@ export function GoalManagementPage({ goals, onGoalsUpdate, onBack, userSession }
                                         className="h-10 font-semibold"
                                         placeholder="Level title"
                                       />
-                                      <Input
+                                      <Textarea
                                         value={editingLevelData.reward || ""}
                                         onChange={(e) =>
                                           setEditingLevelData({ ...editingLevelData, reward: e.target.value })
                                         }
-                                        className="h-10"
-                                        placeholder="Reward"
+                                        className="min-h-[60px]"
+                                        placeholder="Reward (e.g., 🎯 Unlock Next Level + Bonus Resources)"
                                       />
                                     </div>
                                     <Textarea
@@ -885,7 +885,7 @@ export function GoalManagementPage({ goals, onGoalsUpdate, onBack, userSession }
                                       Level {level.id}: {level.title}
                                     </h3>
                                     <p className="text-slate-500 mt-1">{level.description}</p>
-                                    <div className="flex items-center gap-3 mt-2">
+                                    <div className="flex items-center gap-3 mt-2 flex-wrap">
                                       <Badge
                                         variant={level.unlocked ? "default" : "secondary"}
                                         className={
@@ -896,9 +896,9 @@ export function GoalManagementPage({ goals, onGoalsUpdate, onBack, userSession }
                                       >
                                         {level.unlocked ? "Unlocked" : "Locked"}
                                       </Badge>
-                                      <div className="flex items-center gap-1 text-sm text-slate-500">
-                                        <Gift className="h-4 w-4 text-orange-500" />
-                                        <span>{level.reward}</span>
+                                      <div className="flex items-start gap-1 text-sm text-slate-500 max-w-md">
+                                        <Gift className="h-4 w-4 text-orange-500 flex-shrink-0 mt-0.5" />
+                                        <span className="break-words">{level.reward}</span>
                                       </div>
                                     </div>
                                   </div>
