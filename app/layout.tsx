@@ -6,8 +6,8 @@ import "./globals.css"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Goal Quest - Level Up Your Life",
-  description: "Gamified goal tracking with levels, rewards, and achievements",
+  title: "Goal Leveling - Level Up Your Life",
+  description: "Transform your dreams into achievements with gamified goal tracking, levels, and rewards",
     generator: 'v0.dev'
 }
 

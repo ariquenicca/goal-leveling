@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Trophy, Star, Target, Gift, CheckCircle2, Plus, ArrowLeft, Settings, Loader2 } from "lucide-react"
+import { Trophy, Star, Target, Gift, CheckCircle2, Plus, ArrowLeft, Settings, Loader2, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { GoalManagementPage } from "@/components/goal-management-page"
 import { AuthProvider } from "@/components/auth-provider"
@@ -48,7 +48,6 @@ function GoalTracker() {
   const [goals, setGoals] = useState<Goal[]>([])
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null)
   const [currentView, setCurrentView] = useState<AppView>("dashboard")
-  const [useSimpleAuth, setUseSimpleAuth] = useState(false)
 
   // Load user data when session changes
   useEffect(() => {
@@ -59,7 +58,7 @@ function GoalTracker() {
 
   const loadUserData = (userEmail: string) => {
     try {
-      const savedData = localStorage.getItem(`goalquest_${userEmail}`)
+      const savedData = localStorage.getItem(`goalleveling_${userEmail}`)
       if (savedData) {
         const userData = JSON.parse(savedData)
         setGoals(userData.goals || [])
@@ -72,7 +71,7 @@ function GoalTracker() {
 
   const saveUserData = (userEmail: string, data: { goals: Goal[] }) => {
     try {
-      localStorage.setItem(`goalquest_${userEmail}`, JSON.stringify(data))
+      localStorage.setItem(`goalleveling_${userEmail}`, JSON.stringify(data))
     } catch (error) {
       console.error("Error saving user data:", error)
     }
@@ -155,11 +154,14 @@ function GoalTracker() {
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardContent className="flex flex-col items-center justify-center p-8">
-            <Loader2 className="h-8 w-8 animate-spin text-purple-500 mb-4" />
-            <p className="text-muted-foreground">Loading Goal Quest...</p>
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center">
+        <Card className="w-full max-w-md border-0 shadow-2xl bg-white/80 backdrop-blur-sm">
+          <CardContent className="flex flex-col items-center justify-center p-12">
+            <div className="relative">
+              <Loader2 className="h-12 w-12 animate-spin text-indigo-500" />
+              <div className="absolute inset-0 h-12 w-12 animate-ping rounded-full bg-indigo-400 opacity-20"></div>
+            </div>
+            <p className="text-slate-600 mt-6 font-medium">Loading Goal Leveling...</p>
           </CardContent>
         </Card>
       </div>
@@ -167,7 +169,7 @@ function GoalTracker() {
   }
 
   if (status === "unauthenticated") {
-    return <LoginForm onUseSimpleAuth={() => setUseSimpleAuth(true)} />
+    return <LoginForm />
   }
 
   // Goal Management Page
@@ -195,96 +197,104 @@ function GoalTracker() {
         : 0
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 p-4">
-        <div className="max-w-6xl mx-auto space-y-6">
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+        <div className="max-w-7xl mx-auto p-6 space-y-8">
           {/* Header */}
-          <div className="text-center space-y-4">
-            <div className="flex items-center justify-center gap-4">
-              <Button variant="outline" onClick={() => setCurrentView("dashboard")}>
+          <div className="text-center space-y-6">
+            <div className="flex items-center justify-center gap-6">
+              <Button
+                variant="outline"
+                onClick={() => setCurrentView("dashboard")}
+                className="border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300"
+              >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Dashboard
               </Button>
-              <div className="text-3xl">{selectedGoal.icon}</div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+              <div className="text-4xl drop-shadow-sm">{selectedGoal.icon}</div>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
                 {selectedGoal.title}
               </h1>
             </div>
-            <p className="text-muted-foreground text-lg">{selectedGoal.description}</p>
+            <p className="text-slate-600 text-xl max-w-2xl mx-auto">{selectedGoal.description}</p>
 
-            <div className="flex items-center justify-center gap-6 flex-wrap">
-              <div className="flex items-center gap-2">
-                <Trophy className="h-5 w-5 text-yellow-500" />
-                <span className="font-semibold">Level {selectedGoal.currentLevel}</span>
+            <div className="flex items-center justify-center gap-8 flex-wrap">
+              <div className="flex items-center gap-3 bg-white/60 backdrop-blur-sm px-4 py-2 rounded-full border border-yellow-200">
+                <Trophy className="h-6 w-6 text-yellow-500" />
+                <span className="font-bold text-slate-700">Level {selectedGoal.currentLevel}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Star className="h-5 w-5 text-purple-500" />
-                <span className="font-semibold">{selectedGoal.totalXP} XP</span>
+              <div className="flex items-center gap-3 bg-white/60 backdrop-blur-sm px-4 py-2 rounded-full border border-purple-200">
+                <Star className="h-6 w-6 text-purple-500" />
+                <span className="font-bold text-slate-700">{selectedGoal.totalXP} XP</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Target className="h-5 w-5 text-blue-500" />
-                <span className="font-semibold">
+              <div className="flex items-center gap-3 bg-white/60 backdrop-blur-sm px-4 py-2 rounded-full border border-blue-200">
+                <Target className="h-6 w-6 text-blue-500" />
+                <span className="font-bold text-slate-700">
                   {getCompletedTotalTasks(selectedGoal)}/{getTotalTasksCount(selectedGoal)} Tasks
                 </span>
               </div>
             </div>
 
-            <div className="max-w-md mx-auto">
-              <div className="flex justify-between text-sm text-muted-foreground mb-2">
-                <span>Overall Progress</span>
-                <span>{Math.round(overallProgress)}%</span>
+            <div className="max-w-lg mx-auto">
+              <div className="flex justify-between text-sm text-slate-600 mb-3">
+                <span className="font-medium">Overall Progress</span>
+                <span className="font-bold">{Math.round(overallProgress)}%</span>
               </div>
-              <Progress value={overallProgress} className="h-3" />
+              <Progress value={overallProgress} className="h-4 bg-white/50" />
             </div>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-6">
+          <div className="grid lg:grid-cols-3 gap-8">
             {/* Current Level Tasks */}
             <div className="lg:col-span-2 space-y-6">
-              <Card className="border-2 border-purple-200 shadow-lg">
-                <CardHeader className="bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-t-lg">
+              <Card className="border-0 shadow-2xl bg-white/80 backdrop-blur-sm overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white">
                   <div className="flex items-center justify-between">
                     <div>
-                      <CardTitle className="text-2xl">
+                      <CardTitle className="text-3xl font-bold">
                         Level {currentLevelData?.id}: {currentLevelData?.title}
                       </CardTitle>
-                      <CardDescription className="text-purple-100">{currentLevelData?.description}</CardDescription>
+                      <CardDescription className="text-indigo-100 text-lg mt-2">
+                        {currentLevelData?.description}
+                      </CardDescription>
                     </div>
-                    <Badge variant="secondary" className="bg-white/20 text-white">
+                    <Badge variant="secondary" className="bg-white/20 text-white border-0 text-lg px-4 py-2">
                       {currentLevelData ? getCompletedTasksCount(currentLevelData) : 0}/
                       {currentLevelData?.tasks.length || 0} Complete
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent className="p-6">
-                  <div className="space-y-4">
+                <CardContent className="p-8">
+                  <div className="space-y-6">
                     {currentLevelData?.tasks.map((task) => (
                       <div
                         key={task.id}
-                        className="flex items-start gap-3 p-4 rounded-lg border hover:bg-muted/50 transition-colors"
+                        className="flex items-start gap-4 p-6 rounded-xl border-2 border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/50 transition-all duration-200"
                       >
                         <Checkbox
                           checked={task.completed}
                           onCheckedChange={() => toggleTask(selectedGoal.id, currentLevelData.id, task.id)}
-                          className="mt-1"
+                          className="mt-1 h-5 w-5"
                         />
                         <div className="flex-1">
-                          <h4 className={`font-medium ${task.completed ? "line-through text-muted-foreground" : ""}`}>
+                          <h4
+                            className={`font-semibold text-lg ${task.completed ? "line-through text-slate-400" : "text-slate-700"}`}
+                          >
                             {task.title}
                           </h4>
-                          <p className="text-sm text-muted-foreground mt-1">{task.description}</p>
+                          <p className="text-slate-500 mt-2">{task.description}</p>
                         </div>
-                        {task.completed && <CheckCircle2 className="h-5 w-5 text-green-500 mt-1" />}
+                        {task.completed && <CheckCircle2 className="h-6 w-6 text-green-500 mt-1" />}
                       </div>
                     ))}
                   </div>
 
                   {currentLevelData?.completed && (
-                    <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                      <div className="flex items-center gap-2 text-green-700">
-                        <Trophy className="h-5 w-5" />
-                        <span className="font-semibold">Level Complete!</span>
+                    <div className="mt-8 p-6 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl">
+                      <div className="flex items-center gap-3 text-green-700">
+                        <Trophy className="h-6 w-6" />
+                        <span className="font-bold text-xl">Level Complete!</span>
                       </div>
-                      <p className="text-green-600 mt-1">Congratulations! You've unlocked the next level.</p>
+                      <p className="text-green-600 mt-2 text-lg">Congratulations! You've unlocked the next level.</p>
                     </div>
                   )}
                 </CardContent>
@@ -294,58 +304,54 @@ function GoalTracker() {
             {/* Sidebar */}
             <div className="space-y-6">
               {/* Next Reward */}
-              <Card>
+              <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Gift className="h-5 w-5 text-orange-500" />
+                  <CardTitle className="flex items-center gap-3 text-xl">
+                    <Gift className="h-6 w-6 text-orange-500" />
                     Next Reward
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-center p-4 bg-gradient-to-br from-orange-50 to-yellow-50 rounded-lg border">
-                    <div className="text-2xl mb-2">{currentLevelData?.reward.split(" ")[0]}</div>
-                    <p className="text-sm font-medium">{currentLevelData?.reward.substring(2)}</p>
+                  <div className="text-center p-6 bg-gradient-to-br from-orange-50 to-yellow-50 rounded-xl border-2 border-orange-200">
+                    <div className="text-4xl mb-4">{currentLevelData?.reward.split(" ")[0]}</div>
+                    <p className="font-semibold text-slate-700">{currentLevelData?.reward.substring(2)}</p>
                   </div>
                 </CardContent>
               </Card>
 
               {/* Level Roadmap */}
-              <Card>
+              <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle>Roadmap</CardTitle>
-                  <CardDescription>Your journey progress</CardDescription>
+                  <CardTitle className="text-xl">Roadmap</CardTitle>
+                  <CardDescription className="text-base">Your journey progress</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {selectedGoal.levels.map((level) => (
-                      <div key={level.id} className="flex items-center gap-3">
+                      <div key={level.id} className="flex items-center gap-4">
                         <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                          className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border-2 ${
                             level.completed
-                              ? "bg-green-500 text-white"
+                              ? "bg-green-500 text-white border-green-500"
                               : level.id === selectedGoal.currentLevel
-                                ? "bg-purple-500 text-white"
+                                ? "bg-indigo-500 text-white border-indigo-500"
                                 : level.unlocked
-                                  ? "bg-blue-100 text-blue-600 border-2 border-blue-300"
-                                  : "bg-gray-100 text-gray-400"
+                                  ? "bg-blue-50 text-blue-600 border-blue-300"
+                                  : "bg-slate-100 text-slate-400 border-slate-200"
                           }`}
                         >
-                          {level.completed ? <CheckCircle2 className="h-4 w-4" /> : level.id}
+                          {level.completed ? <CheckCircle2 className="h-5 w-5" /> : level.id}
                         </div>
                         <div className="flex-1">
-                          <div
-                            className={`text-sm font-medium ${
-                              level.unlocked ? "text-foreground" : "text-muted-foreground"
-                            }`}
-                          >
+                          <div className={`font-semibold ${level.unlocked ? "text-slate-700" : "text-slate-400"}`}>
                             {level.title}
                           </div>
-                          <div className="text-xs text-muted-foreground">
+                          <div className="text-sm text-slate-500">
                             {getCompletedTasksCount(level)}/{level.tasks.length} tasks
                           </div>
                         </div>
                         {level.id === selectedGoal.currentLevel && (
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="border-indigo-300 text-indigo-600">
                             Current
                           </Badge>
                         )}
@@ -363,21 +369,32 @@ function GoalTracker() {
 
   // Dashboard (Main View)
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 p-4">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+      <div className="max-w-7xl mx-auto p-6 space-y-8">
         {/* Header */}
-        <div className="text-center space-y-4">
-          <div className="flex items-center justify-between max-w-4xl mx-auto">
+        <div className="text-center space-y-6">
+          <div className="flex items-center justify-between max-w-5xl mx-auto">
             <div className="flex-1" />
             <div className="flex-1 text-center">
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                Goal Quest
-              </h1>
-              <p className="text-muted-foreground text-lg">Level up your life, one goal at a time</p>
-              <p className="text-sm text-muted-foreground">Welcome, {session?.user?.name || session?.user?.email}!</p>
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <Zap className="h-10 w-10 text-indigo-500" />
+                <h1 className="text-5xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                  Goal Leveling
+                </h1>
+              </div>
+              <p className="text-slate-600 text-xl">Level up your life, one goal at a time</p>
+              <div className="flex items-center justify-center gap-2 mt-3">
+                <div className="w-2 h-2 bg-indigo-400 rounded-full"></div>
+                <p className="text-slate-500">Welcome, {session?.user?.name || session?.user?.email}!</p>
+                <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+              </div>
             </div>
             <div className="flex-1 flex justify-end">
-              <Button variant="outline" onClick={handleLogout}>
+              <Button
+                variant="outline"
+                onClick={handleLogout}
+                className="border-slate-200 hover:bg-slate-50 bg-transparent"
+              >
                 Sign Out
               </Button>
             </div>
@@ -387,38 +404,42 @@ function GoalTracker() {
         {/* Goals Grid or Empty State */}
         {goals.length === 0 ? (
           // Empty State
-          <div className="text-center py-16">
-            <div className="max-w-md mx-auto space-y-6">
-              <div className="text-6xl mb-4">🎯</div>
-              <h2 className="text-2xl font-bold text-muted-foreground">No Goals Yet</h2>
-              <p className="text-muted-foreground">
-                Ready to start your journey? Create your first goal and begin leveling up your life!
+          <div className="text-center py-20">
+            <div className="max-w-lg mx-auto space-y-8">
+              <div className="relative">
+                <div className="text-8xl mb-6 drop-shadow-sm">🎯</div>
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-400 to-purple-400 opacity-20 blur-3xl rounded-full"></div>
+              </div>
+              <h2 className="text-3xl font-bold text-slate-700">Ready to Level Up?</h2>
+              <p className="text-slate-600 text-lg leading-relaxed">
+                Create your first goal and start your journey towards becoming the best version of yourself. Every
+                expert was once a beginner!
               </p>
               <Button
                 onClick={() => setCurrentView("goal-management")}
                 size="lg"
-                className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
+                className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white border-0 shadow-xl px-8 py-4 text-lg"
               >
-                <Plus className="h-5 w-5 mr-2" />
+                <Plus className="h-6 w-6 mr-3" />
                 Create Your First Goal
               </Button>
             </div>
           </div>
         ) : (
           // Goals Grid
-          <div className="space-y-6">
+          <div className="space-y-8">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Your Goals</h2>
+              <h2 className="text-3xl font-bold text-slate-700">Your Goals</h2>
               <Button
                 onClick={() => setCurrentView("goal-management")}
-                className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
+                className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white border-0 shadow-lg"
               >
-                <Settings className="h-4 w-4 mr-2" />
+                <Settings className="h-5 w-5 mr-2" />
                 Manage Goals
               </Button>
             </div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               {goals.map((goal) => {
                 const progress =
                   getTotalTasksCount(goal) > 0 ? (getCompletedTotalTasks(goal) / getTotalTasksCount(goal)) * 100 : 0
@@ -427,42 +448,48 @@ function GoalTracker() {
                 return (
                   <Card
                     key={goal.id}
-                    className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105"
+                    className="cursor-pointer hover:shadow-2xl transition-all duration-300 hover:scale-105 border-0 bg-white/80 backdrop-blur-sm overflow-hidden group"
                     onClick={() => {
                       setSelectedGoal(goal)
                       setCurrentView("goal-tracking")
                     }}
                   >
-                    <CardHeader>
-                      <div className="flex items-center gap-3">
-                        <div className="text-3xl">{goal.icon}</div>
+                    <CardHeader className="pb-4">
+                      <div className="flex items-center gap-4">
+                        <div className="text-4xl drop-shadow-sm group-hover:scale-110 transition-transform duration-300">
+                          {goal.icon}
+                        </div>
                         <div className="flex-1">
-                          <CardTitle className="text-xl">{goal.title}</CardTitle>
-                          <CardDescription>{goal.description}</CardDescription>
+                          <CardTitle className="text-xl text-slate-700 group-hover:text-indigo-600 transition-colors">
+                            {goal.title}
+                          </CardTitle>
+                          <CardDescription className="text-slate-500 mt-1">{goal.description}</CardDescription>
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-6">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Progress</span>
-                        <span className="font-medium">{Math.round(progress)}%</span>
+                        <span className="text-slate-500 font-medium">Progress</span>
+                        <span className="font-bold text-slate-700">{Math.round(progress)}%</span>
                       </div>
-                      <Progress value={progress} className="h-2" />
+                      <Progress value={progress} className="h-3 bg-slate-100" />
 
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 bg-yellow-50 px-3 py-2 rounded-full">
                           <Trophy className="h-4 w-4 text-yellow-500" />
-                          <span className="text-sm font-medium">Level {goal.currentLevel}</span>
+                          <span className="text-sm font-semibold text-slate-700">Level {goal.currentLevel}</span>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 bg-purple-50 px-3 py-2 rounded-full">
                           <Star className="h-4 w-4 text-purple-500" />
-                          <span className="text-sm font-medium">{goal.totalXP} XP</span>
+                          <span className="text-sm font-semibold text-slate-700">{goal.totalXP} XP</span>
                         </div>
                       </div>
 
-                      <div className="text-xs text-muted-foreground">Current: {currentLevelData?.title}</div>
+                      <div className="text-sm text-slate-500">
+                        <span className="font-medium">Current:</span> {currentLevelData?.title}
+                      </div>
 
-                      <Badge variant="outline" className="w-fit">
+                      <Badge variant="outline" className="w-fit border-indigo-200 text-indigo-600">
                         {goal.category}
                       </Badge>
                     </CardContent>
@@ -472,13 +499,18 @@ function GoalTracker() {
 
               {/* Add New Goal Card */}
               <Card
-                className="cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-105 border-dashed border-2"
+                className="cursor-pointer hover:shadow-2xl transition-all duration-300 hover:scale-105 border-2 border-dashed border-indigo-200 bg-white/60 backdrop-blur-sm group"
                 onClick={() => setCurrentView("goal-management")}
               >
-                <CardContent className="flex flex-col items-center justify-center h-full min-h-[300px] text-center">
-                  <Plus className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold text-muted-foreground">Add New Goal</h3>
-                  <p className="text-sm text-muted-foreground mt-2">Create another goal to track</p>
+                <CardContent className="flex flex-col items-center justify-center h-full min-h-[350px] text-center p-8">
+                  <div className="relative mb-6">
+                    <Plus className="h-16 w-16 text-indigo-400 group-hover:text-indigo-500 transition-colors" />
+                    <div className="absolute inset-0 bg-indigo-400 opacity-20 blur-xl rounded-full group-hover:opacity-30 transition-opacity"></div>
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-600 group-hover:text-indigo-600 transition-colors">
+                    Add New Goal
+                  </h3>
+                  <p className="text-slate-500 mt-3">Create another goal to track your progress</p>
                 </CardContent>
               </Card>
             </div>
