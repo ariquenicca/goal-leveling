@@ -121,21 +121,9 @@ function GoalTracker() {
             return level
           })
 
-          // Check if current level is completed and unlock next level
-          const currentLevelData = updatedLevels.find((l) => l.id === goal.currentLevel)
-          if (currentLevelData?.completed) {
-            const nextLevel = updatedLevels.find((l) => l.id === goal.currentLevel + 1)
-            if (nextLevel && !nextLevel.unlocked) {
-              nextLevel.unlocked = true
-              goal.currentLevel = goal.currentLevel + 1
-              goal.totalXP += 50 // Bonus XP for level completion
-            }
-          }
-
-          return {
-            ...goal,
-            levels: updatedLevels,
-          }
+          // Update level unlocking and current level progression
+          const updatedGoal = updateLevelProgression({ ...goal, levels: updatedLevels })
+          return updatedGoal
         }
         return goal
       })
@@ -167,20 +155,9 @@ function GoalTracker() {
             return level
           })
 
-          // Check if current level is completed and unlock next level
-          const currentLevelData = updatedLevels.find((l) => l.id === goal.currentLevel)
-          if (currentLevelData?.completed) {
-            const nextLevel = updatedLevels.find((l) => l.id === goal.currentLevel + 1)
-            if (nextLevel && !nextLevel.unlocked) {
-              nextLevel.unlocked = true
-              goal.currentLevel = goal.currentLevel + 1
-            }
-          }
-
-          return {
-            ...goal,
-            levels: updatedLevels,
-          }
+          // Update level unlocking and current level progression
+          const updatedGoal = updateLevelProgression({ ...goal, levels: updatedLevels })
+          return updatedGoal
         }
         return goal
       })
@@ -192,6 +169,47 @@ function GoalTracker() {
 
       return newGoals
     })
+  }
+
+  // New function to handle level progression and unlocking
+  const updateLevelProgression = (goal: Goal): Goal => {
+    const updatedLevels = [...goal.levels]
+    let currentLevel = goal.currentLevel
+
+    // Unlock levels based on completion
+    for (let i = 0; i < updatedLevels.length; i++) {
+      const level = updatedLevels[i]
+
+      if (i === 0) {
+        // First level is always unlocked
+        level.unlocked = true
+      } else {
+        // Unlock if previous level is completed
+        const previousLevel = updatedLevels[i - 1]
+        if (previousLevel.completed) {
+          level.unlocked = true
+        }
+      }
+    }
+
+    // Update current level to the first incomplete level
+    for (let i = 0; i < updatedLevels.length; i++) {
+      if (!updatedLevels[i].completed) {
+        currentLevel = updatedLevels[i].id
+        break
+      }
+    }
+
+    // If all levels are completed, current level stays at the last level
+    if (updatedLevels.every((level) => level.completed)) {
+      currentLevel = updatedLevels[updatedLevels.length - 1]?.id || 1
+    }
+
+    return {
+      ...goal,
+      levels: updatedLevels,
+      currentLevel: currentLevel,
+    }
   }
 
   const getCompletedTasksCount = (level: Level) => level.tasks.filter((t) => t.completed).length
@@ -325,7 +343,16 @@ function GoalTracker() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-8">
-                  {currentLevelData?.tasks.length === 0 ? (
+                  {!currentLevelData ? (
+                    // No current level (shouldn't happen, but safety check)
+                    <div className="text-center py-12">
+                      <div className="text-6xl mb-6">🎉</div>
+                      <h3 className="text-2xl font-bold text-slate-700 mb-4">All Levels Complete!</h3>
+                      <p className="text-slate-500 text-lg">
+                        Congratulations! You've completed all levels for this goal.
+                      </p>
+                    </div>
+                  ) : currentLevelData.tasks.length === 0 ? (
                     // No tasks - manual completion
                     <div className="text-center py-12">
                       <div className="text-6xl mb-6">🎯</div>
@@ -336,13 +363,18 @@ function GoalTracker() {
                       <Button
                         onClick={() => toggleLevelCompletion(selectedGoal.id, currentLevelData.id)}
                         size="lg"
+                        disabled={!currentLevelData.unlocked}
                         className={`h-14 px-8 text-lg font-semibold ${
-                          currentLevelData.completed
-                            ? "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
-                            : "bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600"
+                          !currentLevelData.unlocked
+                            ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                            : currentLevelData.completed
+                              ? "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                              : "bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600"
                         }`}
                       >
-                        {currentLevelData.completed ? (
+                        {!currentLevelData.unlocked ? (
+                          <>🔒 Level Locked</>
+                        ) : currentLevelData.completed ? (
                           <>
                             <CheckCircle2 className="h-6 w-6 mr-3" />
                             Mark as Incomplete
@@ -354,31 +386,43 @@ function GoalTracker() {
                           </>
                         )}
                       </Button>
+                      {!currentLevelData.unlocked && (
+                        <p className="text-sm text-slate-400 mt-4">Complete the previous level to unlock this one</p>
+                      )}
                     </div>
                   ) : (
                     // Has tasks - show task list
                     <div className="space-y-6">
-                      {currentLevelData?.tasks.map((task) => (
-                        <div
-                          key={task.id}
-                          className="flex items-start gap-4 p-6 rounded-xl border-2 border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/50 transition-all duration-200"
-                        >
-                          <Checkbox
-                            checked={task.completed}
-                            onCheckedChange={() => toggleTask(selectedGoal.id, currentLevelData.id, task.id)}
-                            className="mt-1 h-5 w-5"
-                          />
-                          <div className="flex-1">
-                            <h4
-                              className={`font-semibold text-lg ${task.completed ? "line-through text-slate-400" : "text-slate-700"}`}
-                            >
-                              {task.title}
-                            </h4>
-                            <p className="text-slate-500 mt-2">{task.description}</p>
-                          </div>
-                          {task.completed && <CheckCircle2 className="h-6 w-6 text-green-500 mt-1" />}
+                      {!currentLevelData.unlocked && (
+                        <div className="text-center py-8 bg-slate-50 rounded-xl border-2 border-slate-200">
+                          <div className="text-4xl mb-4">🔒</div>
+                          <h3 className="text-xl font-bold text-slate-600 mb-2">Level Locked</h3>
+                          <p className="text-slate-500">Complete the previous level to unlock this one</p>
                         </div>
-                      ))}
+                      )}
+
+                      {currentLevelData.unlocked &&
+                        currentLevelData.tasks.map((task) => (
+                          <div
+                            key={task.id}
+                            className="flex items-start gap-4 p-6 rounded-xl border-2 border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/50 transition-all duration-200"
+                          >
+                            <Checkbox
+                              checked={task.completed}
+                              onCheckedChange={() => toggleTask(selectedGoal.id, currentLevelData.id, task.id)}
+                              className="mt-1 h-5 w-5"
+                            />
+                            <div className="flex-1">
+                              <h4
+                                className={`font-semibold text-lg ${task.completed ? "line-through text-slate-400" : "text-slate-700"}`}
+                              >
+                                {task.title}
+                              </h4>
+                              <p className="text-slate-500 mt-2">{task.description}</p>
+                            </div>
+                            {task.completed && <CheckCircle2 className="h-6 w-6 text-green-500 mt-1" />}
+                          </div>
+                        ))}
                     </div>
                   )}
 
@@ -440,19 +484,26 @@ function GoalTracker() {
                                   : "bg-slate-100 text-slate-400 border-slate-200"
                           }`}
                         >
-                          {level.completed ? <CheckCircle2 className="h-5 w-5" /> : level.id}
+                          {level.completed ? <CheckCircle2 className="h-5 w-5" /> : level.unlocked ? level.id : "🔒"}
                         </div>
                         <div className="flex-1">
                           <div className={`font-semibold ${level.unlocked ? "text-slate-700" : "text-slate-400"}`}>
                             {level.title}
                           </div>
                           <div className="text-sm text-slate-500">
-                            {getCompletedTasksCount(level)}/{level.tasks.length} tasks
+                            {level.tasks.length === 0
+                              ? "Manual completion"
+                              : `${getCompletedTasksCount(level)}/${level.tasks.length} tasks`}
                           </div>
                         </div>
                         {level.id === selectedGoal.currentLevel && (
                           <Badge variant="outline" className="border-indigo-300 text-indigo-600">
                             Current
+                          </Badge>
+                        )}
+                        {!level.unlocked && (
+                          <Badge variant="outline" className="border-slate-300 text-slate-500">
+                            Locked
                           </Badge>
                         )}
                       </div>
