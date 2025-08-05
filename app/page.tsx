@@ -110,12 +110,59 @@ function GoalTracker() {
                 return task
               })
 
-              const allTasksCompleted = updatedTasks.every((task) => task.completed)
+              const allTasksCompleted =
+                updatedTasks.length === 0 ? level.completed : updatedTasks.every((task) => task.completed)
               return {
                 ...level,
                 tasks: updatedTasks,
                 completed: allTasksCompleted,
               }
+            }
+            return level
+          })
+
+          // Check if current level is completed and unlock next level
+          const currentLevelData = updatedLevels.find((l) => l.id === goal.currentLevel)
+          if (currentLevelData?.completed) {
+            const nextLevel = updatedLevels.find((l) => l.id === goal.currentLevel + 1)
+            if (nextLevel && !nextLevel.unlocked) {
+              nextLevel.unlocked = true
+              goal.currentLevel = goal.currentLevel + 1
+              goal.totalXP += 50 // Bonus XP for level completion
+            }
+          }
+
+          return {
+            ...goal,
+            levels: updatedLevels,
+          }
+        }
+        return goal
+      })
+
+      // Save to localStorage
+      if (session?.user?.email) {
+        saveUserData(session.user.email, { goals: newGoals })
+      }
+
+      return newGoals
+    })
+  }
+
+  // Add new function for manual level completion
+  const toggleLevelCompletion = (goalId: string, levelId: number) => {
+    setGoals((prevGoals) => {
+      const newGoals = prevGoals.map((goal) => {
+        if (goal.id === goalId) {
+          const updatedLevels = goal.levels.map((level) => {
+            if (level.id === levelId) {
+              const newCompleted = !level.completed
+              if (newCompleted && !level.completed) {
+                goal.totalXP += 50 // XP for manual level completion
+              } else if (!newCompleted && level.completed) {
+                goal.totalXP -= 50
+              }
+              return { ...level, completed: newCompleted }
             }
             return level
           })
@@ -151,6 +198,23 @@ function GoalTracker() {
   const getTotalTasksCount = (goal: Goal) => goal.levels.reduce((total, level) => total + level.tasks.length, 0)
   const getCompletedTotalTasks = (goal: Goal) =>
     goal.levels.reduce((total, level) => total + getCompletedTasksCount(level), 0)
+
+  // Add new function for overall progress including manual completions
+  const getOverallProgress = (goal: Goal) => {
+    const totalLevels = goal.levels.length
+    const completedLevels = goal.levels.filter((level) => level.completed).length
+    const totalTasks = getTotalTasksCount(goal)
+    const completedTasks = getCompletedTotalTasks(goal)
+
+    if (totalLevels === 0) return 0
+
+    // If there are tasks, use task-based progress, otherwise use level-based progress
+    if (totalTasks > 0) {
+      return (completedTasks / totalTasks) * 100
+    } else {
+      return (completedLevels / totalLevels) * 100
+    }
+  }
 
   if (status === "loading") {
     return (
@@ -191,10 +255,7 @@ function GoalTracker() {
   // Goal Tracking Page
   if (currentView === "goal-tracking" && selectedGoal) {
     const currentLevelData = selectedGoal.levels.find((l) => l.id === selectedGoal.currentLevel)
-    const overallProgress =
-      getTotalTasksCount(selectedGoal) > 0
-        ? (getCompletedTotalTasks(selectedGoal) / getTotalTasksCount(selectedGoal)) * 100
-        : 0
+    const overallProgress = getOverallProgress(selectedGoal)
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
@@ -264,29 +325,62 @@ function GoalTracker() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-8">
-                  <div className="space-y-6">
-                    {currentLevelData?.tasks.map((task) => (
-                      <div
-                        key={task.id}
-                        className="flex items-start gap-4 p-6 rounded-xl border-2 border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/50 transition-all duration-200"
+                  {currentLevelData?.tasks.length === 0 ? (
+                    // No tasks - manual completion
+                    <div className="text-center py-12">
+                      <div className="text-6xl mb-6">🎯</div>
+                      <h3 className="text-2xl font-bold text-slate-700 mb-4">No Tasks Required</h3>
+                      <p className="text-slate-500 text-lg mb-8">
+                        This level doesn't have specific tasks. Mark it as complete when you've achieved your goal.
+                      </p>
+                      <Button
+                        onClick={() => toggleLevelCompletion(selectedGoal.id, currentLevelData.id)}
+                        size="lg"
+                        className={`h-14 px-8 text-lg font-semibold ${
+                          currentLevelData.completed
+                            ? "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
+                            : "bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600"
+                        }`}
                       >
-                        <Checkbox
-                          checked={task.completed}
-                          onCheckedChange={() => toggleTask(selectedGoal.id, currentLevelData.id, task.id)}
-                          className="mt-1 h-5 w-5"
-                        />
-                        <div className="flex-1">
-                          <h4
-                            className={`font-semibold text-lg ${task.completed ? "line-through text-slate-400" : "text-slate-700"}`}
-                          >
-                            {task.title}
-                          </h4>
-                          <p className="text-slate-500 mt-2">{task.description}</p>
+                        {currentLevelData.completed ? (
+                          <>
+                            <CheckCircle2 className="h-6 w-6 mr-3" />
+                            Mark as Incomplete
+                          </>
+                        ) : (
+                          <>
+                            <Target className="h-6 w-6 mr-3" />
+                            Mark as Complete
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  ) : (
+                    // Has tasks - show task list
+                    <div className="space-y-6">
+                      {currentLevelData?.tasks.map((task) => (
+                        <div
+                          key={task.id}
+                          className="flex items-start gap-4 p-6 rounded-xl border-2 border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/50 transition-all duration-200"
+                        >
+                          <Checkbox
+                            checked={task.completed}
+                            onCheckedChange={() => toggleTask(selectedGoal.id, currentLevelData.id, task.id)}
+                            className="mt-1 h-5 w-5"
+                          />
+                          <div className="flex-1">
+                            <h4
+                              className={`font-semibold text-lg ${task.completed ? "line-through text-slate-400" : "text-slate-700"}`}
+                            >
+                              {task.title}
+                            </h4>
+                            <p className="text-slate-500 mt-2">{task.description}</p>
+                          </div>
+                          {task.completed && <CheckCircle2 className="h-6 w-6 text-green-500 mt-1" />}
                         </div>
-                        {task.completed && <CheckCircle2 className="h-6 w-6 text-green-500 mt-1" />}
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
 
                   {currentLevelData?.completed && (
                     <div className="mt-8 p-6 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl">
@@ -294,7 +388,11 @@ function GoalTracker() {
                         <Trophy className="h-6 w-6" />
                         <span className="font-bold text-xl">Level Complete!</span>
                       </div>
-                      <p className="text-green-600 mt-2 text-lg">Congratulations! You've unlocked the next level.</p>
+                      <p className="text-green-600 mt-2 text-lg">
+                        {currentLevelData.tasks.length === 0
+                          ? "Great job! You've completed this level manually."
+                          : "Congratulations! You've completed all tasks for this level."}
+                      </p>
                     </div>
                   )}
                 </CardContent>
@@ -441,8 +539,7 @@ function GoalTracker() {
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               {goals.map((goal) => {
-                const progress =
-                  getTotalTasksCount(goal) > 0 ? (getCompletedTotalTasks(goal) / getTotalTasksCount(goal)) * 100 : 0
+                const progress = getOverallProgress(goal)
                 const currentLevelData = goal.levels.find((l) => l.id === goal.currentLevel)
 
                 return (

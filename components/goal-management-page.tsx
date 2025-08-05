@@ -671,7 +671,9 @@ export function GoalManagementPage({ goals, onGoalsUpdate, onBack, userSession }
                                 <span className="font-medium text-slate-600">Reward:</span>
                                 <span className="text-slate-500">{level.reward}</span>
                               </div>
-                              <div className="text-sm text-slate-500 mt-2">{level.tasks.length} tasks</div>
+                              <div className="text-sm text-slate-500 mt-2">
+                                {level.tasks.length === 0 ? "Manual completion" : `${level.tasks.length} tasks`}
+                              </div>
                             </div>
                             <div className="flex gap-3">
                               <Button size="lg" variant="outline" onClick={() => setEditingLevel({ ...level })}>
@@ -750,8 +752,30 @@ export function GoalManagementPage({ goals, onGoalsUpdate, onBack, userSession }
                       <CheckCircle2 className="h-6 w-6 text-indigo-500" />
                       Managing Tasks for: {selectedGoal.icon} {selectedGoal.title}
                     </CardTitle>
-                    <CardDescription className="text-lg">Add specific tasks to each level</CardDescription>
+                    <CardDescription className="text-lg">
+                      Add specific tasks to each level. Tasks are optional - levels without tasks can be completed
+                      manually.
+                    </CardDescription>
                   </CardHeader>
+                </Card>
+
+                {/* Add info card about optional tasks */}
+                <Card className="border-blue-200 bg-blue-50 shadow-lg">
+                  <CardContent className="p-6">
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                        <CheckCircle2 className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-blue-900 text-lg mb-2">Tasks are Optional!</h3>
+                        <p className="text-blue-800 leading-relaxed">
+                          You can create levels without any tasks. These levels can be marked as complete manually when
+                          you achieve your goal. This is perfect for subjective goals like "Feel more confident" or
+                          milestone-based achievements.
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
                 </Card>
 
                 {selectedGoal.levels.length === 0 ? (
