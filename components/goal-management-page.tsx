@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -25,6 +27,7 @@ import {
   ChevronDown,
   ChevronRight,
   List,
+  GripVertical,
 } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
@@ -112,6 +115,15 @@ export function GoalManagementPage({ goals, onGoalsUpdate, onBack, userSession }
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
   const [expandedLevels, setExpandedLevels] = useState<Set<number>>(new Set())
 
+  // Local editing states to prevent auto-save on every keystroke
+  const [editingGoalData, setEditingGoalData] = useState<Partial<Goal>>({})
+  const [editingLevelData, setEditingLevelData] = useState<Partial<Level>>({})
+  const [editingTaskData, setEditingTaskData] = useState<Partial<Task>>({})
+
+  // Drag and drop states
+  const [draggedLevel, setDraggedLevel] = useState<number | null>(null)
+  const [draggedTask, setDraggedTask] = useState<{ levelId: number; taskId: string } | null>(null)
+
   const [newGoal, setNewGoal] = useState({
     title: "",
     description: "",
@@ -149,6 +161,100 @@ export function GoalManagementPage({ goals, onGoalsUpdate, onBack, userSession }
     setNewTask({ ...newTask, [levelId]: task })
   }
 
+  // Drag and Drop Functions
+  const handleLevelDragStart = (e: React.DragEvent, levelId: number) => {
+    setDraggedLevel(levelId)
+    e.dataTransfer.effectAllowed = "move"
+  }
+
+  const handleLevelDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = "move"
+  }
+
+  const handleLevelDrop = (e: React.DragEvent, targetLevelId: number) => {
+    e.preventDefault()
+    if (!selectedGoal || !draggedLevel || draggedLevel === targetLevelId) return
+
+    const levels = [...selectedGoal.levels]
+    const draggedIndex = levels.findIndex((l) => l.id === draggedLevel)
+    const targetIndex = levels.findIndex((l) => l.id === targetLevelId)
+
+    if (draggedIndex === -1 || targetIndex === -1) return
+
+    // Remove dragged level and insert at target position
+    const [draggedLevelData] = levels.splice(draggedIndex, 1)
+    levels.splice(targetIndex, 0, draggedLevelData)
+
+    // Update level IDs to maintain order
+    const reorderedLevels = levels.map((level, index) => ({
+      ...level,
+      id: index + 1,
+    }))
+
+    const updatedGoal = {
+      ...selectedGoal,
+      levels: reorderedLevels,
+    }
+
+    onGoalsUpdate(goals.map((goal) => (goal.id === selectedGoal.id ? updatedGoal : goal)))
+    setSelectedGoal(updatedGoal)
+    setDraggedLevel(null)
+  }
+
+  const handleTaskDragStart = (e: React.DragEvent, levelId: number, taskId: string) => {
+    setDraggedTask({ levelId, taskId })
+    e.dataTransfer.effectAllowed = "move"
+  }
+
+  const handleTaskDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = "move"
+  }
+
+  const handleTaskDrop = (e: React.DragEvent, targetLevelId: number, targetTaskId: string) => {
+    e.preventDefault()
+    if (!selectedGoal || !draggedTask) return
+
+    const { levelId: sourceLevelId, taskId: sourceTaskId } = draggedTask
+
+    if (sourceLevelId === targetLevelId && sourceTaskId === targetTaskId) return
+
+    const levels = [...selectedGoal.levels]
+    const sourceLevelIndex = levels.findIndex((l) => l.id === sourceLevelId)
+    const targetLevelIndex = levels.findIndex((l) => l.id === targetLevelId)
+
+    if (sourceLevelIndex === -1 || targetLevelIndex === -1) return
+
+    // Get the dragged task
+    const sourceLevel = levels[sourceLevelIndex]
+    const draggedTaskIndex = sourceLevel.tasks.findIndex((t) => t.id === sourceTaskId)
+    if (draggedTaskIndex === -1) return
+
+    const [draggedTaskData] = sourceLevel.tasks.splice(draggedTaskIndex, 1)
+
+    // Add to target level
+    const targetLevel = levels[targetLevelIndex]
+    const targetTaskIndex = targetLevel.tasks.findIndex((t) => t.id === targetTaskId)
+
+    if (targetTaskIndex === -1) {
+      // Add to end if target task not found
+      targetLevel.tasks.push(draggedTaskData)
+    } else {
+      // Insert at target position
+      targetLevel.tasks.splice(targetTaskIndex, 0, draggedTaskData)
+    }
+
+    const updatedGoal = {
+      ...selectedGoal,
+      levels,
+    }
+
+    onGoalsUpdate(goals.map((goal) => (goal.id === selectedGoal.id ? updatedGoal : goal)))
+    setSelectedGoal(updatedGoal)
+    setDraggedTask(null)
+  }
+
   // Goal CRUD Operations
   const createGoal = () => {
     if (!newGoal.title.trim()) {
@@ -175,10 +281,31 @@ export function GoalManagementPage({ goals, onGoalsUpdate, onBack, userSession }
     setError("")
   }
 
-  const updateGoal = (goalId: string, updates: Partial<Goal>) => {
-    onGoalsUpdate(goals.map((goal) => (goal.id === goalId ? { ...goal, ...updates } : goal)))
+  const startEditingGoal = (goal: Goal) => {
+    setEditingGoalId(goal.id)
+    setEditingGoalData({
+      title: goal.title,
+      description: goal.description,
+      icon: goal.icon,
+      category: goal.category,
+    })
+  }
+
+  const saveGoalEdit = () => {
+    if (!editingGoalData.title?.trim()) {
+      setError("Goal title is required")
+      return
+    }
+
+    onGoalsUpdate(goals.map((goal) => (goal.id === editingGoalId ? { ...goal, ...editingGoalData } : goal)))
     setEditingGoalId(null)
+    setEditingGoalData({})
     setError("")
+  }
+
+  const cancelGoalEdit = () => {
+    setEditingGoalId(null)
+    setEditingGoalData({})
   }
 
   const deleteGoal = (goalId: string) => {
@@ -217,18 +344,38 @@ export function GoalManagementPage({ goals, onGoalsUpdate, onBack, userSession }
     setError("")
   }
 
-  const updateLevel = (levelId: number, updates: Partial<Level>) => {
-    if (!selectedGoal) return
+  const startEditingLevel = (level: Level) => {
+    setEditingLevelId(level.id)
+    setEditingLevelData({
+      title: level.title,
+      description: level.description,
+      reward: level.reward,
+    })
+  }
+
+  const saveLevelEdit = () => {
+    if (!selectedGoal || !editingLevelData.title?.trim()) {
+      setError("Level title is required")
+      return
+    }
 
     const updatedGoal = {
       ...selectedGoal,
-      levels: selectedGoal.levels.map((level) => (level.id === levelId ? { ...level, ...updates } : level)),
+      levels: selectedGoal.levels.map((level) =>
+        level.id === editingLevelId ? { ...level, ...editingLevelData } : level,
+      ),
     }
 
     onGoalsUpdate(goals.map((goal) => (goal.id === selectedGoal.id ? updatedGoal : goal)))
     setSelectedGoal(updatedGoal)
     setEditingLevelId(null)
+    setEditingLevelData({})
     setError("")
+  }
+
+  const cancelLevelEdit = () => {
+    setEditingLevelId(null)
+    setEditingLevelData({})
   }
 
   const deleteLevel = (levelId: number) => {
@@ -273,8 +420,19 @@ export function GoalManagementPage({ goals, onGoalsUpdate, onBack, userSession }
     setError("")
   }
 
-  const updateTask = (levelId: number, taskId: string, updates: Partial<Task>) => {
-    if (!selectedGoal) return
+  const startEditingTask = (task: Task) => {
+    setEditingTaskId(task.id)
+    setEditingTaskData({
+      title: task.title,
+      description: task.description,
+    })
+  }
+
+  const saveTaskEdit = (levelId: number) => {
+    if (!selectedGoal || !editingTaskData.title?.trim()) {
+      setError("Task title is required")
+      return
+    }
 
     const updatedGoal = {
       ...selectedGoal,
@@ -282,7 +440,7 @@ export function GoalManagementPage({ goals, onGoalsUpdate, onBack, userSession }
         level.id === levelId
           ? {
               ...level,
-              tasks: level.tasks.map((task) => (task.id === taskId ? { ...task, ...updates } : task)),
+              tasks: level.tasks.map((task) => (task.id === editingTaskId ? { ...task, ...editingTaskData } : task)),
             }
           : level,
       ),
@@ -291,7 +449,13 @@ export function GoalManagementPage({ goals, onGoalsUpdate, onBack, userSession }
     onGoalsUpdate(goals.map((goal) => (goal.id === selectedGoal.id ? updatedGoal : goal)))
     setSelectedGoal(updatedGoal)
     setEditingTaskId(null)
+    setEditingTaskData({})
     setError("")
+  }
+
+  const cancelTaskEdit = () => {
+    setEditingTaskId(null)
+    setEditingTaskData({})
   }
 
   const deleteTask = (levelId: number, taskId: string) => {
@@ -454,14 +618,14 @@ export function GoalManagementPage({ goals, onGoalsUpdate, onBack, userSession }
                         <div className="space-y-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Input
-                              value={goal.title}
-                              onChange={(e) => updateGoal(goal.id, { title: e.target.value })}
+                              value={editingGoalData.title || ""}
+                              onChange={(e) => setEditingGoalData({ ...editingGoalData, title: e.target.value })}
                               className="h-12 font-semibold text-lg"
                               placeholder="Goal title"
                             />
                             <Select
-                              value={goal.category}
-                              onValueChange={(value) => updateGoal(goal.id, { category: value })}
+                              value={editingGoalData.category || ""}
+                              onValueChange={(value) => setEditingGoalData({ ...editingGoalData, category: value })}
                             >
                               <SelectTrigger className="h-12">
                                 <SelectValue />
@@ -476,8 +640,8 @@ export function GoalManagementPage({ goals, onGoalsUpdate, onBack, userSession }
                             </Select>
                           </div>
                           <Textarea
-                            value={goal.description}
-                            onChange={(e) => updateGoal(goal.id, { description: e.target.value })}
+                            value={editingGoalData.description || ""}
+                            onChange={(e) => setEditingGoalData({ ...editingGoalData, description: e.target.value })}
                             className="min-h-[80px]"
                             placeholder="Goal description"
                           />
@@ -486,10 +650,10 @@ export function GoalManagementPage({ goals, onGoalsUpdate, onBack, userSession }
                               {goalIcons.map((icon) => (
                                 <Button
                                   key={icon}
-                                  variant={goal.icon === icon ? "default" : "outline"}
+                                  variant={editingGoalData.icon === icon ? "default" : "outline"}
                                   size="sm"
-                                  onClick={() => updateGoal(goal.id, { icon })}
-                                  className={goal.icon === icon ? "bg-indigo-500 hover:bg-indigo-600" : ""}
+                                  onClick={() => setEditingGoalData({ ...editingGoalData, icon })}
+                                  className={editingGoalData.icon === icon ? "bg-indigo-500 hover:bg-indigo-600" : ""}
                                 >
                                   <span className="text-lg">{icon}</span>
                                 </Button>
@@ -498,13 +662,13 @@ export function GoalManagementPage({ goals, onGoalsUpdate, onBack, userSession }
                           </div>
                           <div className="flex gap-3">
                             <Button
-                              onClick={() => setEditingGoalId(null)}
+                              onClick={saveGoalEdit}
                               className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
                             >
                               <Save className="h-4 w-4 mr-2" />
                               Save
                             </Button>
-                            <Button variant="outline" onClick={() => setEditingGoalId(null)}>
+                            <Button variant="outline" onClick={cancelGoalEdit}>
                               <X className="h-4 w-4 mr-2" />
                               Cancel
                             </Button>
@@ -540,7 +704,7 @@ export function GoalManagementPage({ goals, onGoalsUpdate, onBack, userSession }
                             >
                               {selectedGoal?.id === goal.id ? "Selected" : "Select"}
                             </Button>
-                            <Button size="lg" variant="outline" onClick={() => setEditingGoalId(goal.id)}>
+                            <Button size="lg" variant="outline" onClick={() => startEditingGoal(goal)}>
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button size="lg" variant="outline" onClick={() => deleteGoal(goal.id)}>
@@ -566,7 +730,13 @@ export function GoalManagementPage({ goals, onGoalsUpdate, onBack, userSession }
                       <Target className="h-6 w-6 text-indigo-500" />
                       Managing: {selectedGoal.icon} {selectedGoal.title}
                     </CardTitle>
-                    <CardDescription className="text-lg">{selectedGoal.description}</CardDescription>
+                    <CardDescription className="text-lg">
+                      {selectedGoal.description}
+                      <br />
+                      <span className="text-sm text-blue-600 mt-2 block">
+                        💡 Tip: Drag the grip handles to reorder levels and tasks
+                      </span>
+                    </CardDescription>
                   </CardHeader>
                 </Card>
 
@@ -634,10 +804,22 @@ export function GoalManagementPage({ goals, onGoalsUpdate, onBack, userSession }
                 {selectedGoal.levels.length > 0 && (
                   <div className="space-y-6">
                     {selectedGoal.levels.map((level) => (
-                      <Card key={level.id} className="border-0 shadow-xl bg-white/80 backdrop-blur-sm overflow-hidden">
+                      <Card
+                        key={level.id}
+                        className={`border-0 shadow-xl bg-white/80 backdrop-blur-sm overflow-hidden transition-all ${
+                          draggedLevel === level.id ? "opacity-50 scale-95" : ""
+                        }`}
+                        draggable
+                        onDragStart={(e) => handleLevelDragStart(e, level.id)}
+                        onDragOver={handleLevelDragOver}
+                        onDrop={(e) => handleLevelDrop(e, level.id)}
+                      >
                         <CardHeader className="pb-4">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
+                              <div className="cursor-grab active:cursor-grabbing">
+                                <GripVertical className="h-5 w-5 text-slate-400" />
+                              </div>
                               <Collapsible
                                 open={expandedLevels.has(level.id)}
                                 onOpenChange={() => toggleLevelExpansion(level.id)}
@@ -658,34 +840,40 @@ export function GoalManagementPage({ goals, onGoalsUpdate, onBack, userSession }
                                   <div className="space-y-3">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                       <Input
-                                        value={level.title}
-                                        onChange={(e) => updateLevel(level.id, { title: e.target.value })}
+                                        value={editingLevelData.title || ""}
+                                        onChange={(e) =>
+                                          setEditingLevelData({ ...editingLevelData, title: e.target.value })
+                                        }
                                         className="h-10 font-semibold"
                                         placeholder="Level title"
                                       />
                                       <Input
-                                        value={level.reward}
-                                        onChange={(e) => updateLevel(level.id, { reward: e.target.value })}
+                                        value={editingLevelData.reward || ""}
+                                        onChange={(e) =>
+                                          setEditingLevelData({ ...editingLevelData, reward: e.target.value })
+                                        }
                                         className="h-10"
                                         placeholder="Reward"
                                       />
                                     </div>
                                     <Textarea
-                                      value={level.description}
-                                      onChange={(e) => updateLevel(level.id, { description: e.target.value })}
+                                      value={editingLevelData.description || ""}
+                                      onChange={(e) =>
+                                        setEditingLevelData({ ...editingLevelData, description: e.target.value })
+                                      }
                                       className="min-h-[60px]"
                                       placeholder="Description"
                                     />
                                     <div className="flex gap-2">
                                       <Button
-                                        onClick={() => setEditingLevelId(null)}
+                                        onClick={saveLevelEdit}
                                         size="sm"
                                         className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
                                       >
                                         <Save className="h-3 w-3 mr-1" />
                                         Save
                                       </Button>
-                                      <Button variant="outline" size="sm" onClick={() => setEditingLevelId(null)}>
+                                      <Button variant="outline" size="sm" onClick={cancelLevelEdit}>
                                         <X className="h-3 w-3 mr-1" />
                                         Cancel
                                       </Button>
@@ -719,7 +907,7 @@ export function GoalManagementPage({ goals, onGoalsUpdate, onBack, userSession }
                             </div>
                             {editingLevelId !== level.id && (
                               <div className="flex gap-2">
-                                <Button size="sm" variant="outline" onClick={() => setEditingLevelId(level.id)}>
+                                <Button size="sm" variant="outline" onClick={() => startEditingLevel(level)}>
                                   <Edit className="h-4 w-4" />
                                 </Button>
                                 <Button size="sm" variant="outline" onClick={() => deleteLevel(level.id)}>
@@ -788,38 +976,45 @@ export function GoalManagementPage({ goals, onGoalsUpdate, onBack, userSession }
                                     level.tasks.map((task) => (
                                       <div
                                         key={task.id}
-                                        className="flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:border-indigo-200 transition-colors"
+                                        className={`flex items-center justify-between p-4 border border-slate-200 rounded-lg hover:border-indigo-200 transition-colors ${
+                                          draggedTask?.taskId === task.id ? "opacity-50 scale-95" : ""
+                                        }`}
+                                        draggable
+                                        onDragStart={(e) => handleTaskDragStart(e, level.id, task.id)}
+                                        onDragOver={handleTaskDragOver}
+                                        onDrop={(e) => handleTaskDrop(e, level.id, task.id)}
                                       >
+                                        <div className="cursor-grab active:cursor-grabbing mr-3">
+                                          <GripVertical className="h-4 w-4 text-slate-400" />
+                                        </div>
                                         {editingTaskId === task.id ? (
                                           <div className="flex-1 space-y-2">
                                             <Input
-                                              value={task.title}
-                                              onChange={(e) => updateTask(level.id, task.id, { title: e.target.value })}
+                                              value={editingTaskData.title || ""}
+                                              onChange={(e) =>
+                                                setEditingTaskData({ ...editingTaskData, title: e.target.value })
+                                              }
                                               className="h-9 font-medium"
                                               placeholder="Task title"
                                             />
                                             <Textarea
-                                              value={task.description}
+                                              value={editingTaskData.description || ""}
                                               onChange={(e) =>
-                                                updateTask(level.id, task.id, { description: e.target.value })
+                                                setEditingTaskData({ ...editingTaskData, description: e.target.value })
                                               }
                                               className="min-h-[50px]"
                                               placeholder="Task description"
                                             />
                                             <div className="flex gap-2">
                                               <Button
-                                                onClick={() => setEditingTaskId(null)}
+                                                onClick={() => saveTaskEdit(level.id)}
                                                 size="sm"
                                                 className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
                                               >
                                                 <Save className="h-3 w-3 mr-1" />
                                                 Save
                                               </Button>
-                                              <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => setEditingTaskId(null)}
-                                              >
+                                              <Button variant="outline" size="sm" onClick={cancelTaskEdit}>
                                                 <X className="h-3 w-3 mr-1" />
                                                 Cancel
                                               </Button>
@@ -837,7 +1032,7 @@ export function GoalManagementPage({ goals, onGoalsUpdate, onBack, userSession }
                                               <Button
                                                 size="sm"
                                                 variant="outline"
-                                                onClick={() => setEditingTaskId(task.id)}
+                                                onClick={() => startEditingTask(task)}
                                               >
                                                 <Edit className="h-3 w-3" />
                                               </Button>
